@@ -1,6 +1,7 @@
 //do not change the order of the following 3 definitions
 #define FCY 12800000UL 
 #include <stdio.h>
+#include <stdlib.h> 
 #include <libpic30.h>
 
 #include <p33Fxxxx.h>
@@ -43,14 +44,14 @@ int main(void)
     lcd_locate(0,2);
     lcd_printf_d("bi");
     while(1) {
-       // Acknowledge messages
-       
+       //Acknowledge messages
         // Read the start bit
-                   // Wait for start bit
-        uint8_t* start_byte;
+        // Wait for start bit
+        uint8_t* start_byte = malloc(sizeof(uint8_t));
         while (uart2_recv(start_byte) != 0);         // Receive start bit
         lcd_locate(0,5);
         lcd_printf_d("start_byte: %x", *start_byte);
+        
         
         if (*start_byte != 0) {
             fail++;
@@ -60,20 +61,22 @@ int main(void)
             uart2_send_8(MSG_NACK);
             continue;
         }
+        
         lcd_locate(0,2);
         lcd_printf_d("hi");
-        while(1);
-        uint8_t* crc_byte1;
-        *crc_byte1 = 0;
-        
-        while (uart2_recv(crc_byte1) != 0);
-        lcd_locate(0,3);
-        lcd_printf_d("%x", *crc_byte1);
-        uint8_t* crc_byte2;
-        while (uart2_recv(crc_byte2) != 0);
-        lcd_locate(0,4);
-        lcd_printf_d("%x", *crc_byte2);
-        
+//        while(1);
+//        uint8_t* crc_byte1 = malloc(sizeof(uint8_t));
+////        *crc_byte1 = 0;
+//        
+//        while (uart2_recv(crc_byte1) != 0);
+//        lcd_locate(0,3);
+//        lcd_printf_d("%x", *crc_byte1);
+//        
+//        uint8_t* crc_byte2 = malloc(sizeof(uint8_t));
+//        while (uart2_recv(crc_byte2) != 0);
+//        lcd_locate(0,4);
+//        lcd_printf_d("%x", *crc_byte2);
+                
     }
 }	
 
