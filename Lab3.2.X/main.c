@@ -21,13 +21,18 @@ _FWDT(FWDTEN_OFF);
 // Disable Code Protection
 _FGS(GCP_OFF);   
 
+int timer_fired = 0;
+
+void __attribute__((__interrupt__)) _T2Interrupt(void) {
+    TMR2=0;
+    timer_fired = 1;
+    CLEARBIT(IFS0bits.T2IF);
+}
 
 
 int main(void)
 {	
-	/* Q: What is my purpose? */
-	/* A: You pass butter. */
-	/* Q: Oh. My. God. */
+    __C30_UART=1;
     
     lcd_initialize();
     lcd_clear();
@@ -40,32 +45,56 @@ int main(void)
     while (U2STAbits.URXDA) {
         a = U2RXREG & 0x00FF;
     }
+    lcd_locate(0,0);
+    lcd_printf_d("-- Lab 3 --");
+    lcd_locate(0,1);
+    lcd_printf_d("Recv fail: %d times", fail);
+
+    //set_timer1(period); 
     while(1) {
        //Acknowledge messages
         // Read the start bit
         // Wait for start bit
+        set_timer2(50000);
         
-        lcd_locate(0,0);
-        lcd_printf_d("Recv fail: %d times", fail);
         uint8_t buffer[259] = {0};
         buffer[0] = -1;
         buffer[1] = -1;
         buffer[2] = -1;
         uint8_t i = 0;
-        
-        for (i = 0; i < 4; i++) {
+        timer_fired = 0;
+        TMR2=0;
+        while (uart2_recv(&buffer[i]) != 0);
+        // 2 sec
+         // Start Timer
+            
+        for (i = 1; i < 4; i++) {
             while (uart2_recv(&buffer[i]) != 0);
-        }
-        lcd_clear();
-        for (i = 4; i < 4 + buffer[3]; i++) {
-            while (uart2_recv(&buffer[i]) != 0);
-        }
-        
-        //while (uart2_recv(buffer[i]) == 0) {
-        //    i++;
-        //};
-        
 
+        }
+
+        for (i = 4; i < 4 + buffer[3]; i++) {
+            while (uart2_recv(&buffer[i]) != 0 && !timer_fired);
+            if (timer_fired) {
+                fail++;
+                lcd_locate(0,0);
+                lcd_printf_d("-- Lab 3 --");
+                lcd_locate(0,1);
+                lcd_printf_d("Recv fail: %d times", fail);
+                int a = 0;
+                while (U2STAbits.URXDA) {
+                    a = U2RXREG & 0x00FF;
+                }
+                CLEARBIT(T2CONbits.TON); // Disable Timer
+                break;
+            }
+        }
+        
+        if (timer_fired) {
+            uart2_send_8(MSG_NACK);
+            continue;
+        }
+        
         uint16_t crc_rec = 0;
         crc_rec = (buffer[1] << 8) | buffer[2];
         
@@ -82,32 +111,35 @@ int main(void)
         }
         message[j - 4] = '\0';
  
-        lcd_locate(0,6);
-        lcd_printf_d("start_byte: %x, %x, %x", buffer[0], buffer[1], buffer[2]);
-        lcd_locate(0,1);
-        lcd_printf_d("crc_rec: %x", crc_rec);
-        lcd_locate(0,2);
-        lcd_printf_d("crc: %x", crc);
-        lcd_locate(0,3);
-        lcd_printf_d("length: %d", N);
-        lcd_locate(0,4);
-        lcd_printf_d(message);
-        lcd_locate(0,5);
-        lcd_printf_d("i: %d", i);
+        
         
         if (crc_rec == crc) {
-            uart2_send_8(MSG_ACK);
-            fail = 0;
+            lcd_clear();
             lcd_locate(0,0);
-            lcd_printf("Recv fail: %d times", fail);
+            lcd_printf_d("-- Lab 3 --");
+            lcd_locate(0,1);
+            lcd_printf_d("Recv fail: %d times", fail);
+            lcd_locate(0,2);
+            lcd_printf_d("crc_rec: %x", crc_rec);
+            lcd_locate(0,3);
+            lcd_printf_d("crc: %x", crc);
+            lcd_locate(0,4);
+            lcd_printf_d(message);       
+            fail = 0;
+            CLEARBIT(T2CONbits.TON); // Disable Timer
+            uart2_send_8(MSG_ACK);
         } else {
             fail++;
             lcd_locate(0,0);
-            lcd_printf("Recv fail: %d times", fail);
+            lcd_printf_d("-- Lab 3 --");
+            lcd_locate(0,1);
+            lcd_printf_d("Recv fail: %d times", fail);
             int a = 0;
+            CLEARBIT(T2CONbits.TON); // Disable Timer
             while (U2STAbits.URXDA) {
                 a = U2RXREG & 0x00FF;
             }
+            
             uart2_send_8(MSG_NACK);
         }
     }
