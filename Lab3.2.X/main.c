@@ -23,10 +23,10 @@ _FGS(GCP_OFF);
 
 int timer_fired = 0;
 
-void __attribute__((__interrupt__)) _T2Interrupt(void) {
-    TMR2=0;
+void __attribute__((__interrupt__)) _T1Interrupt(void) {
+    TMR1=0;
     timer_fired = 1;
-    CLEARBIT(IFS0bits.T2IF);
+    CLEARBIT(IFS0bits.T1IF);
 }
 
 
@@ -55,7 +55,7 @@ int main(void)
        //Acknowledge messages
         // Read the start bit
         // Wait for start bit
-        set_timer2(50000);
+        
         
         uint8_t buffer[259] = {0};
         buffer[0] = -1;
@@ -63,10 +63,11 @@ int main(void)
         buffer[2] = -1;
         uint8_t i = 0;
         timer_fired = 0;
-        TMR2=0;
+        TMR1=0;
         while (uart2_recv(&buffer[i]) != 0);
         // 2 sec
          // Start Timer
+        set_timer1(32767);
             
         for (i = 1; i < 4; i++) {
             while (uart2_recv(&buffer[i]) != 0);
@@ -85,7 +86,7 @@ int main(void)
                 while (U2STAbits.URXDA) {
                     a = U2RXREG & 0x00FF;
                 }
-                CLEARBIT(T2CONbits.TON); // Disable Timer
+                CLEARBIT(T1CONbits.TON); // Disable Timer
                 break;
             }
         }
@@ -126,7 +127,8 @@ int main(void)
             lcd_locate(0,4);
             lcd_printf_d(message);       
             fail = 0;
-            CLEARBIT(T2CONbits.TON); // Disable Timer
+            
+            CLEARBIT(T1CONbits.TON); // Disable Timer
             uart2_send_8(MSG_ACK);
         } else {
             fail++;
@@ -135,7 +137,7 @@ int main(void)
             lcd_locate(0,1);
             lcd_printf_d("Recv fail: %d times", fail);
             int a = 0;
-            CLEARBIT(T2CONbits.TON); // Disable Timer
+            CLEARBIT(T1CONbits.TON); // Disable Timer
             while (U2STAbits.URXDA) {
                 a = U2RXREG & 0x00FF;
             }
