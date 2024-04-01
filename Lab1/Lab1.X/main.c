@@ -23,6 +23,7 @@
 #include "joystick.h"
 
 
+
 /* Initial configuration by EE */
 // Primary (XT, HS, EC) Oscillator with PLL
 _FOSCSEL(FNOSC_PRIPLL);
@@ -85,7 +86,7 @@ int main(){
             T++;
             SETLED(LED1_PORT);
 
-            if (T > 1500) {
+            if (T > 100) {
                 if (pressed == 0) {
                     counter++;
                     

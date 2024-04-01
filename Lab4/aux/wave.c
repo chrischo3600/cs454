@@ -136,7 +136,7 @@ int main(int argc, char ** argv) {
         // used in both signal handlers
         sigset_t mask, wait_mask;
         struct itimerspec timer2_time;
-	double period_sec = 1.0 / wave_freq;
+	double period_sec = 1.0 / (wave_freq * 2);
 	long long seconds = (long long) period_sec;
 	long nanoseconds = (long)((period_sec - seconds) * 1e9);
         
