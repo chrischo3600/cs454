@@ -131,6 +131,8 @@ int main(){
     uint16_t T = 0;
     uint8_t pressed = 0;
     uint16_t released = 0;
+    lcd_locate(0,1);
+    lcd_printf_d("JS Max X?  %d    ", ADCValue);
     
     while(go) {
         AD2CHS0bits.CH0SA = 4;
@@ -139,7 +141,7 @@ int main(){
         CLEARBIT(AD2CON1bits.DONE);
         ADCValue = ADC2BUF0;
         lcd_locate(0,1);
-        lcd_printf_d("JS Max x: %d    ", ADCValue);
+        lcd_printf_d("JS Max X?  %d    ", ADCValue);
    
         if (BTN1_PRESSED()) {
             if (released != 0) {
@@ -151,6 +153,8 @@ int main(){
                 if (pressed == 0) {
                     // pressed
                     max_x = ADCValue;
+                    lcd_locate(0,1);
+                    lcd_printf_d("JS Max X? =%d    ", ADCValue);
                     go = 0;
                 }
                 pressed = 1;
@@ -182,7 +186,7 @@ int main(){
         CLEARBIT(AD2CON1bits.DONE);
         ADCValue = ADC2BUF0;
         lcd_locate(0,2);
-        lcd_printf_d("JS Min x: %d    ", ADCValue);
+        lcd_printf_d("JS Min X?  %d    ", ADCValue);
         
            
         if (BTN1_PRESSED()) {
@@ -195,6 +199,8 @@ int main(){
                 if (pressed == 0) {
                     // pressed
                     min_x = ADCValue;
+                    lcd_locate(0,2);
+                    lcd_printf_d("JS Min X? =%d    ", ADCValue);
                     go = 0;
                 }
                 pressed = 1;
@@ -225,7 +231,7 @@ int main(){
         CLEARBIT(AD2CON1bits.DONE);
         ADCValue = ADC2BUF0;
         lcd_locate(0,3);
-        lcd_printf_d("JS Max y: %d    ", ADCValue);
+        lcd_printf_d("JS Max Y? %d    ", ADCValue);
         
            
         if (BTN1_PRESSED()) {
@@ -238,6 +244,8 @@ int main(){
                 if (pressed == 0) {
                     // pressed
                     max_y = ADCValue;
+                    lcd_locate(0,3);
+                    lcd_printf_d("JS Max Y? =%d    ", ADCValue);
                     go = 0;
                 }
                 pressed = 1;
@@ -267,7 +275,7 @@ int main(){
         CLEARBIT(AD2CON1bits.DONE);
         ADCValue = ADC2BUF0;
         lcd_locate(0,4);
-        lcd_printf_d("JS Min y: %d    ", ADCValue);
+        lcd_printf_d("JS Min Y? %d    ", ADCValue);
         
            
         if (BTN1_PRESSED()) {
@@ -280,6 +288,8 @@ int main(){
                 if (pressed == 0) {
                     // pressed
                     min_y = ADCValue;
+                    lcd_locate(0,4);
+                    lcd_printf_d("JS Min Y? =%d    ", ADCValue);
                     go = 0;
                 }
                 pressed = 1;

@@ -6,6 +6,7 @@
  */
 
 
+
 #include "xc.h"
 #include "types.h"
 
@@ -57,8 +58,8 @@ void motor_init(uint8_t chan) {
 }
 
 void motor_set_duty(uint8_t chan, uint16_t duty_us) {
-    // 
-    uint16_t duty_cycle = 4000 -(int) (duty_us/1000.0 * 200);
+    // 4000 / 20 ms
+    uint16_t duty_cycle = 4000 -(int) (duty_us/1000.0 * (4000/20));
     
     if (chan == 8) {                
         OC8RS = duty_cycle;               
