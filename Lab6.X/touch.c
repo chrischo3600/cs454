@@ -50,11 +50,6 @@ void touch_init(char dim) {
         
     } else if (dim == 'y'){
         CLEARBIT(AD1CON1bits.ADON);
-        
-        //set up the I/O pins E1, E2, E3 to be output pins
-        CLEARBIT(TRISEbits.TRISE1); //I/O pin set to output
-        CLEARBIT(TRISEbits.TRISE2); //I/O pin set to output
-        CLEARBIT(TRISEbits.TRISE3); //I/O pin set to output
     
         //set up the I/O pins E1, E2, E3 to be output pins
         CLEARBIT(TRISEbits.TRISE1); //I/O pin set to output

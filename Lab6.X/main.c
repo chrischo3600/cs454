@@ -21,6 +21,7 @@
 #include "led.h"
 #include "lcd.h"
 #include "joystick.h"
+#include <stdlib.h>
 #define CHAN_X 8
 #define CHAN_Y 7
 #define SERVOS_LO 900
@@ -44,6 +45,7 @@ _FGS(GCP_OFF);
 void set_motor_angle(uint8_t channel, uint16_t us_value) {
     motor_init(channel);
     motor_set_duty(channel, us_value);
+    __delay_ms(2000);
 }
 
 int compare( const void* a, const void* b)
@@ -77,13 +79,11 @@ int main(){
     
     while (1) {
         for (j = 0; j < 4; j++) {
-            memset(x_samples, 0, sizeof(x_samples));
-            memset(y_samples, 0, sizeof(y_samples));
             
+            uint16_t check[5] = {2, 3, 4, 5, 1};
             // move
             set_motor_angle(CHAN_X, corner_x[j]);
             set_motor_angle(CHAN_Y, corner_y[j]);
-            __delay_ms(2000);
            
             
             // sample x
@@ -93,7 +93,6 @@ int main(){
                 x_samples[i] = touch_read();
             
             }
-            
             
             // sample y
             __delay_ms(10);
@@ -107,10 +106,13 @@ int main(){
             // find median
             qsort(x_samples, 5, sizeof(x_samples[0]), compare);
             qsort(y_samples, 5, sizeof(y_samples[0]), compare);
+            qsort(check, 5, sizeof(check[0]), compare);
                
             // prints
             lcd_locate(0, j+1);
             lcd_printf_d("C%d: X= %d, Y= %d ", j+1, x_samples[2], y_samples[2]);
+            lcd_locate(0, 6);
+            lcd_printf_d("%d, %d, %d, %d, %d", check[0], check[1], check[2], check[3], check[4]);
         }
         
     }
