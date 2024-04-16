@@ -39,11 +39,17 @@ def run_controller(kp, kd, setpoint, noise, filtered, world: World):
     # you can set the variables that should stay accross control loop here
     lastErrorX = 0
     lastErrorY = 0
-    N = 1
+    N = 2
     inputs = [0] * (N+1)
-    outputs = [0] * N
+    outputs = [0] * (N+1)
+    
+    # Define the filter parameters
+    Wn = (30)/(100/2)  # in hz filter
+    fs = 100  # Sample rate in hz
+    b, a = signal.butter(N, Wn, btype='lowpass', fs=fs)
     
     # kp = 0.8, kd = 0.2
+    # kp = 0.5, kd = 0.1
     def pd_controller(x, y, kp, kd, setpoint):
         """Implement a PD controller, you can access the setpoint via setpoint.x and setpoint.y
         the plate is small around 0.1 to 0.2 meters. You will have to calculate the error and change in error and 
@@ -68,30 +74,23 @@ def run_controller(kp, kd, setpoint, noise, filtered, world: World):
         Take a look at the butterworth example written by Renato for inspiration."""
         
 
-        # Define the filter parameters
-        Wn = 50  # in hz filter
-        fs = 101  # Sample rate in hz
-        nonlocal inputs, outputs, N
-        #print("-------------------------")
-        # Design the Butterworth bandstop filter
-        b, a = signal.butter(N, Wn, btype='highpass', fs=fs)
-        #print(a)
-        #print(b)
         
-        inputs = [val] + inputs[:-1]
-        retval = 0
+        nonlocal inputs, outputs, a, b
         
+        # shift the inputs and outputs to prepare for new values
+        for i in range(N, -1, -1):
+          inputs[i] = inputs[i-1]
+          outputs[i] = outputs[i-1]
         
-        # print(inputs)
+        inputs[0] = val
 
+        retval = 0
         for i in range(N+1):
             retval += inputs[i] * b[i]
             if i > 0:
-                retval -= outputs[i - 1] * a[i]
+                retval -= outputs[i] * a[i]
 
-        outputs = [retval] + outputs[:-1]
-         #print(outputs)
-        
+        outputs[0] = retval
 
         return retval
 
