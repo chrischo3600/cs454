@@ -24,28 +24,39 @@
 #define SERVOS_MEAN 1500
 #define NUM_SAMPLES 5
 #define TOUCH_MID_X 1900.0
-#define TOUCH_MID_Y 1850.0
+#define TOUCH_MID_Y 2000.0
 #define BUTTER_ORD 3
 #define X 0
 #define Y 1
-#define KP 0.2
-#define KD 0.1
-#define KI 0
 
-//#define KP 0.15
-//#define KD 0.05
-//#define KI 0.001
+
+#define KPx 0.08
+#define KDx 0.001
+#define KIx 0.0
+
+#define KPy 0.08
+#define KDy 0.001
+#define KIy 0.0
 
 
 // butterworth ord 3
+// Wn = (2)/(20/2)  # in hz filter
+// fs = 20  # Sample rate in hz
+// N = 3
+//double b[4] = {2.91464945e-05, 8.74394834e-05, 8.74394834e-05,  2.91464945e-05};
+//double a[4] = { 1.,        -2.87435689,  2.7564832, -0.88189313};
+
 // Wn = (5)/(20/2)  # in hz filter
 // fs = 20  # Sample rate in hz
 // N = 3
-//double b[4] = {0.00041655, 0.00124964, 0.00124964,  0.00041655};
-//double a[4] = { 1.,        -2.6861574,  2.41965511, -0.73016535};
+double b[4] = {0.00041655, 0.00124964, 0.00124964,  0.00041655};
+double a[4] = { 1.,        -2.6861574,  2.41965511, -0.73016535};
 
-double b[4] = {0.01809893, 0.0542968,  0.0542968, 0.01809893};
-double a[4] = { 1.,         -1.76004188,  1.18289326, -0.27805992};
+// Wn = (20)/(20/2)  # in hz filter
+// fs = 20  # Sample rate in hz
+// N = 3
+//double b[4] = {0.01809893, 0.0542968,  0.0542968, 0.01809893};
+//double a[4] = { 1.,         -1.76004188,  1.18289326, -0.27805992};
 
 int val;
 int filter; 
@@ -90,13 +101,12 @@ int compare( const void* a, const void* b)
 
 void __attribute__((__interrupt__)) _T3Interrupt(void) {
     TMR3=0;
-    if (isX) {
+    if (isX < 5) {
         touch_select_dim(X);
-        __delay_ms(10);
     } else {
         touch_select_dim(Y);
-        __delay_ms(10);
     }
+    __delay_ms(10);
     val = touch_read();
     filter = 1;
     CLEARBIT(IFS0bits.T3IF);
@@ -120,6 +130,7 @@ int online_filter(double sampled_value, int * inputs, int * outputs) {
 		if (i > 0)
 			retval -= outputs[i] * a[i];
 	}
+    
 	outputs[0] = retval;
    
 
@@ -136,20 +147,21 @@ double pid_controller_x(int x, double kp, double kd, double ki) {
     //lcd_printf_d("error: %f", errorX);
     
     // error
-    double P = kp * errorX; 
+    double P = kp * errorX * SERVOS_HI; 
     //lcd_locate(0, 3);
     //lcd_printf_d("P: %f", P);
     // rate of sampling in seconds
     double dt = 50.0/1000.0;
     
     // derivative of error 
-    double D = kd * (errChange/dt);
+    double D = kd * (errChange/dt) * SERVOS_HI;
     
     // integral of errors
-    double I = ki * sumErrorX;
+    double I = ki * sumErrorX * SERVOS_HI;
     
     return - P - D - I;
 }
+
 double pid_controller_y(int y, double kp, double kd, double ki) {
     double errorY = y - TOUCH_MID_Y;
     sumErrorY += errorY;
@@ -180,7 +192,7 @@ int main(){
 	lcd_clear();
     int i;
     motor_init(CHAN_Y);
-    set_motor_angle(CHAN_Y, SERVOS_LO);
+    set_motor_angle(CHAN_Y, SERVOS_MEAN);
     
     
     __delay_ms(10);
@@ -190,8 +202,7 @@ int main(){
     int inputsY[BUTTER_ORD+1] = {0, 0, 0, 0};
     int outputsY[BUTTER_ORD+1] = {0, 0, 0, 0};
     
-    
-    // select x dimension
+   
     touch_init();
     
 
@@ -208,38 +219,60 @@ int main(){
     CLEARBIT(IFS0bits.T3IF);
     SETBIT(IEC0bits.T3IE); // Enable Timer1 interrupt
     SETBIT(T3CONbits.TON); // Start Timer
+ 
+    int counter = 0;
     
+    lcd_locate(0, 0);
+    lcd_printf_d("x:(%.2f,%.2f,%.2f)    ", KPx, KIx, KDx);
+    lcd_locate(0, 1);
+    lcd_printf_d("y:(%.2f,%.2f,%.2f)    ", KPy, KIy, KDy);
+    lcd_locate(0, 2);
+    lcd_printf_d("SET:(%.1f, %.1f)    ", TOUCH_MID_X, TOUCH_MID_Y);
+
     
 
     while(1) {
+        int filtered_valX;
+        int filtered_valY;
+double pid;
+
         if (filter) {
             if (isX) {
                 motor_init(CHAN_X);
-                val = online_filter(val, &inputsX, &outputsX);
+                filtered_valX = online_filter(val, &inputsX, &outputsX);
                 //lcd_locate(0, 0);
-                //lcd_printf_d("x_val: %d    ", x_val);
+                //lcd_printf_d("x_val: %d    ", filtered_valX);
 
-                double pid = pid_controller_x(val, KP, KD, KI);
-                pid += SERVOS_MEAN;
-
-                set_motor_angle(CHAN_X, (int)pid);
-                isX = 0;
+                pid = pid_controller_x(filtered_valX, KPx, KDx, KIx);
+                lcd_locate(0, 5);
+                lcd_printf_d("%.2f    ", pid);
+                //pid += SERVOS_MEAN;
+                //set_motor_angle(CHAN_X, (int)pid);
+                //isX = 0;
             } else {
                 motor_init(CHAN_Y);
-                val = online_filter(val, &inputsY, &outputsY);
+                filtered_valY = online_filter(val, &inputsY, &outputsY);
 
-                double pid = pid_controller_y(val, KP, KD, KI);
-                pid += SERVOS_MEAN;
+                pid = pid_controller_y(filtered_valY, KPy, KDy, KIy);
+                //pid += SERVOS_MEAN;
                 set_motor_angle(CHAN_Y, (int)pid);
                 isX = 1;
-                
             }
-            filter = 0;
             
+            filter = 0;
+            counter++;
             
         }
+        lcd_locate(0,3);
+        if (counter == 5) {
+            lcd_printf_d("LOC: (%d, %d)    ", filtered_valX, filtered_valY);
+            lcd_locate(0,4);
+            lcd_printf_d("%.2f    ", pid);
+            counter = 0;
+        } 
     
     }
     
     
 }
+
