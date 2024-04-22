@@ -40,16 +40,18 @@ def run_controller(kp, kd, setpoint, noise, filtered, world: World):
     lastErrorX = 0
     lastErrorY = 0
     N = 2
-    inputs = [0] * (N+1)
-    outputs = [0] * (N+1)
+    inputsX = [0] * (N+1)
+    outputsX = [0] * (N+1)
+    inputsY = [0] * (N+1)
+    outputsY = [0] * (N+1)
     
     # Define the filter parameters
-    Wn = (30)/(100/2)  # in hz filter
+    Wn = (20)/(100/2)  # in hz filter
     fs = 100  # Sample rate in hz
     b, a = signal.butter(N, Wn, btype='lowpass', fs=fs)
     
     # kp = 0.8, kd = 0.2
-    # kp = 0.5, kd = 0.1
+    # kp = 0.2, kd = 0.2 with filter
     def pd_controller(x, y, kp, kd, setpoint):
         """Implement a PD controller, you can access the setpoint via setpoint.x and setpoint.y
         the plate is small around 0.1 to 0.2 meters. You will have to calculate the error and change in error and 
@@ -69,18 +71,24 @@ def run_controller(kp, kd, setpoint, noise, filtered, world: World):
         return P[0] + D[0], P[1] + D[1] 
 
 
-    def filter_val(val):
+    def filter_val(val, dim):
         """Implement a filter here, you can use scipy.signal.butter to compute the filter coefficients and then scipy.signal.lfilter to apply the filter.but we recommend you implement it yourself instead of using lfilter because you'll have to do that on the real system later.
         Take a look at the butterworth example written by Renato for inspiration."""
         
 
         
-        nonlocal inputs, outputs, a, b
+        nonlocal a, b, inputsX, outputsX, inputsY, outputsY
+        if (dim == 'x'):
+            inputs = inputsX
+            outputs = outputsX
+        else:
+            inputs = inputsY
+            outputs = outputsY
         
         # shift the inputs and outputs to prepare for new values
         for i in range(N, -1, -1):
-          inputs[i] = inputs[i-1]
-          outputs[i] = outputs[i-1]
+            inputs[i] = inputs[i-1]
+            outputs[i] = outputs[i-1]
         
         inputs[0] = val
 
@@ -108,8 +116,8 @@ def run_controller(kp, kd, setpoint, noise, filtered, world: World):
             y += utils.noise(t, seed = 43) # so that the noise on y is different than the one on x
         
         if filtered:
-            x = filter_val(x)
-            y = filter_val(y)	
+            x = filter_val(x, 'x')
+            y = filter_val(y, 'y')	
 
         (angle_x, angle_y) = pd_controller(x, y, kp, kd, setpoint)
         set_plate_angles(angle_x, angle_y)
