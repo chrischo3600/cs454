@@ -46,12 +46,12 @@
 //#define KIy 0.000
 
 #define KPx 0.001
-#define KDx 0.00
-#define KIx 0.000
+#define KDx 0.000
+#define KIx 0.0001
 
 #define KPy 0.001
 #define KDy 0.0
-#define KIy 0.000
+#define KIy 0.0001
 
 
 
@@ -166,8 +166,8 @@ double pid_controller_x(int x, double kp, double kd, double ki) {
     
     double angle = (SERVOS_HI - SERVOS_LO)/(pid_max - pid_min) * (pid - pid_min) + SERVOS_LO;
     
-    lcd_locate(0, 5);
-    lcd_printf_d("%.1f, %.1f, %.1f, %.1f ", pid, angle, pid_min, pid_max);
+    //lcd_locate(0, 5);
+    //lcd_printf_d("%.1f,%.1f,%.1f,%.1f ", pid, angle, pid_min, pid_max);
     
     return angle;
 }
@@ -196,8 +196,8 @@ double pid_controller_y(int y, double kp, double kd, double ki) {
     
     double angle = (SERVOS_HI - SERVOS_LO)/(pid_max - pid_min) * (pid - pid_min) + SERVOS_LO;
     
-    lcd_locate(0, 6);
-    lcd_printf_d("%.1f, %.1f, %.1f, %.1f ", pid, angle, pid_min, pid_max);
+    //lcd_locate(0, 6);
+    //lcd_printf_d("%.1f,%.1f,%.1f,%.1f ", pid, angle, pid_min, pid_max);
     
     return angle;
 }
@@ -209,7 +209,7 @@ int main(){
     __C30_UART=1;	
 	lcd_initialize();
     led_initialize();
-    motor_init();
+    //motor_init();
     touch_init();
 	lcd_clear();
     
@@ -217,31 +217,31 @@ int main(){
     lcd_printf_d("--- X ---  --- Y ---");
     lcd_locate(0, 1);
     lcd_printf_d("KP: %.3f", KPx);
-    lcd_locate(10, 1);
+    lcd_locate(11, 1);
     lcd_printf_d("KP: %.3f", KPy);
     lcd_locate(0, 2);
     lcd_printf_d("KI: %.3f", KIx);
-    lcd_locate(10, 2);
+    lcd_locate(11, 2);
     lcd_printf_d("KI: %.3f", KIy);
     lcd_locate(0, 3);
     lcd_printf_d("KD: %.3f", KDx);
-    lcd_locate(10, 3);
+    lcd_locate(11, 3);
     lcd_printf_d("KD: %.3f", KDy);
     lcd_locate(0, 4);
     lcd_printf_d("LOC: ");
-    lcd_locate(10, 4);
+    lcd_locate(11, 4);
     lcd_printf_d("LOC: ");
     
     int i;
-    motor_init(CHAN_Y);
-    set_motor_angle(CHAN_Y, SERVOS_LO);
+    //motor_init(CHAN_Y);
+    //set_motor_angle(CHAN_Y, SERVOS_LO);
     
     
-    int inputsX[BUTTER_ORD+1] = {2400, 2400, 2400, 2400};
-    int outputsX[BUTTER_ORD+1] = {2400, 2400, 2400, 2400};
+    int inputsX[BUTTER_ORD+1] = {310, 310, 310, 310};
+    int outputsX[BUTTER_ORD+1] = {310, 310, 310, 310};
     
-    int inputsY[BUTTER_ORD+1] = {2000, 2000, 2000, 2000};
-    int outputsY[BUTTER_ORD+1] = {2000, 2000, 2000, 2000};
+    int inputsY[BUTTER_ORD+1] = {350, 350, 350, 350};
+    int outputsY[BUTTER_ORD+1] = {350, 350, 350, 350};
     
     //motor_switch(CHAN_Y);
     //set_motor_angle(CHAN_Y, SERVOS_HI);
@@ -273,16 +273,20 @@ int main(){
     int filtered_valY;
     touch_select_dim(X);
     __delay_ms(10);
+    //motor_switch(CHAN_X);
     
     while(1) {
         if (filter) {
             
             if (isX) {
                 filtered_valX = online_filter(val, &inputsX, &outputsX);
-                //lcd_locate(5, 4);
                 double pid = pid_controller_x(filtered_valX, KPx, KDx, KIx);
+                //set_motor_angle(CHAN_X, (int)pid);
                 //pid += SERVOS_MEAN;
-                //lcd_printf_d("%d,", (int) pid);
+                lcd_locate(5, 4);
+                lcd_printf_d("%d ", (int) filtered_valX);
+                lcd_locate(5, 5);
+                lcd_printf_d("%d ", (int) pid);
                 isX = 0;
                 touch_select_dim(Y);
                 __delay_ms(10);
@@ -290,11 +294,13 @@ int main(){
                 
             } else {
                 filtered_valY = online_filter(val, &inputsY, &outputsY);
-                //lcd_locate(15, 4);
                 double pid = pid_controller_y(filtered_valY, KPy, KDy, KIy);
-                //set_motor_angle(CHAN_X, (int)pid);
+                //set_motor_angle(CHAN_Y, (int)pid);
                 //pid += SERVOS_MEAN;
-                //lcd_printf_d("%d,", (int) pid);
+                lcd_locate(16, 4);
+                lcd_printf_d("%d ", (int) filtered_valY);
+                lcd_locate(16, 5);
+                lcd_printf_d("%d ", (int) pid);
                 isX = 1;
                 touch_select_dim(X);
                 __delay_ms(10);
