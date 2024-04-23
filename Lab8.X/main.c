@@ -3,6 +3,9 @@
  * Author: team-7a
  *
  * Created on April 17, 2024, 3:06 PM
+ * A11 A11
+ * A11
+ * A11
  */
 
 #include <p33Fxxxx.h>
@@ -27,8 +30,8 @@
 #define TOUCH_LO_Y 350
 #define TOUCH_HI_X 2900
 #define TOUCH_HI_Y 2500
-//#define TOUCH_MID_X 3200.0
-//#define TOUCH_MID_Y 2600.0
+//#define TOUCH_MID_X 2500.0
+//#define TOUCH_MID_Y 2150.0
 
 #define TOUCH_MID_X 1605.0
 #define TOUCH_MID_Y 1425.0
@@ -37,21 +40,29 @@
 #define X 0
 #define Y 1
 
-//#define KPx 0.001
+#define KPx 0.1
+#define KDx 0.04
+#define KIx 0.00022
+
+#define KPy 0.1
+#define KDy 0.043
+#define KIy 0.0002
+
+//#define KPx 0.1
 //#define KDx 0.001
 //#define KIx 0.000
 //
-//#define KPy 0.002
+//#define KPy 0.2
 //#define KDy 0.0
 //#define KIy 0.000
 
-#define KPx 0.001
-#define KDx 0.000
-#define KIx 0.0001
-
-#define KPy 0.001
-#define KDy 0.0
-#define KIy 0.0001
+//#define KPx 0.001
+//#define KDx 0.000
+//#define KIx 0.0001
+//
+//#define KPy 0.001
+//#define KDy 0.0
+//#define KIy 0.0001
 
 
 
@@ -107,7 +118,6 @@ int compare( const void* a, const void* b)
 
 void __attribute__((__interrupt__)) _T3Interrupt(void) {
     TMR3=0;
-    val = touch_read();
     filter = 1;
     CLEARBIT(IFS0bits.T3IF);
 }
@@ -159,15 +169,19 @@ double pid_controller_x(int x, double kp, double kd, double ki) {
     // integral of errors
     double I = ki * sumErrorX;
     
-    double pid = 0 - P - D - I;
+    double pid = - P - D - I;
+    double pid_lo = -200;
+    double pid_hi = 200;
     
-    double pid_max = 0 -((TOUCH_LO_X - TOUCH_MID_X) * kp) - (1000/dt) * kd; //1300 * KP
-    double pid_min = 0 -((TOUCH_HI_X - TOUCH_MID_X) * kp) - (-1*((1/2)*1000)/dt)*kd; // -1295 * kp
+    if (pid < pid_lo){
+        pid = pid_lo;
+    }
+    if (pid > pid_hi) {
+        pid = pid_hi;
+    }
     
-    double angle = (SERVOS_HI - SERVOS_LO)/(pid_max - pid_min) * (pid - pid_min) + SERVOS_LO;
+    double angle = ((SERVOS_HI-300) - (SERVOS_LO+450))/(pid_hi - pid_lo) * (pid - pid_lo) + (SERVOS_LO+450);
     
-    //lcd_locate(0, 5);
-    //lcd_printf_d("%.1f,%.1f,%.1f,%.1f ", pid, angle, pid_min, pid_max);
     
     return angle;
 }
@@ -190,14 +204,19 @@ double pid_controller_y(int y, double kp, double kd, double ki) {
     double I = ki * sumErrorY;
     
     double pid = 0 - P - D - I;
+    double pid_lo = -200;
+    double pid_hi = 200;
     
-    double pid_max = 0 -((TOUCH_LO_Y - TOUCH_MID_Y) * kp) - (1000/dt) * kd;
-    double pid_min = 0 -((TOUCH_HI_Y - TOUCH_MID_Y) * kp) - (-1*((1/2)*1000)/dt)*kd;
+    if (pid < pid_lo){
+        pid = pid_lo;
+    }
+    if (pid > pid_hi) {
+        pid = pid_hi;
+    }
     
-    double angle = (SERVOS_HI - SERVOS_LO)/(pid_max - pid_min) * (pid - pid_min) + SERVOS_LO;
+    double angle = ((SERVOS_HI-300) - (SERVOS_LO+550))/(pid_hi - pid_lo) * (pid - pid_lo) + (SERVOS_LO+550);
     
-    //lcd_locate(0, 6);
-    //lcd_printf_d("%.1f,%.1f,%.1f,%.1f ", pid, angle, pid_min, pid_max);
+   
     
     return angle;
 }
@@ -209,7 +228,7 @@ int main(){
     __C30_UART=1;	
 	lcd_initialize();
     led_initialize();
-    //motor_init();
+    motor_init();
     touch_init();
 	lcd_clear();
     
@@ -231,17 +250,24 @@ int main(){
     lcd_printf_d("LOC: ");
     lcd_locate(11, 4);
     lcd_printf_d("LOC: ");
+    lcd_locate(0, 6);
+    lcd_printf_d("SET: %d", (int)TOUCH_MID_X);
+    lcd_locate(11, 6);
+    lcd_printf_d("SET: %d", (int)TOUCH_MID_Y);
     
     int i;
-    //motor_init(CHAN_Y);
-    //set_motor_angle(CHAN_Y, SERVOS_LO);
+    motor_switch(CHAN_Y);
+    set_motor_angle(CHAN_Y, SERVOS_MEAN);
+    __delay_ms(2000);
+    motor_switch(CHAN_X);
+    set_motor_angle(CHAN_X, SERVOS_MEAN);
     
     
-    int inputsX[BUTTER_ORD+1] = {310, 310, 310, 310};
-    int outputsX[BUTTER_ORD+1] = {310, 310, 310, 310};
+    int inputsX[BUTTER_ORD+1] = {2900, 2900, 2900, 2900};
+    int outputsX[BUTTER_ORD+1] = {2900, 2900, 2900, 2900};
     
-    int inputsY[BUTTER_ORD+1] = {350, 350, 350, 350};
-    int outputsY[BUTTER_ORD+1] = {350, 350, 350, 350};
+    int inputsY[BUTTER_ORD+1] = {2500, 2500, 2500, 2500};
+    int outputsY[BUTTER_ORD+1] = {2500, 2500, 2500, 2500};
     
     //motor_switch(CHAN_Y);
     //set_motor_angle(CHAN_Y, SERVOS_HI);
@@ -271,40 +297,59 @@ int main(){
     
     int filtered_valX;
     int filtered_valY;
+    
+    motor_switch(CHAN_X);
     touch_select_dim(X);
     __delay_ms(10);
-    //motor_switch(CHAN_X);
     
     while(1) {
         if (filter) {
             
             if (isX) {
+                val = touch_read();
                 filtered_valX = online_filter(val, &inputsX, &outputsX);
                 double pid = pid_controller_x(filtered_valX, KPx, KDx, KIx);
-                //set_motor_angle(CHAN_X, (int)pid);
                 //pid += SERVOS_MEAN;
-                lcd_locate(5, 4);
-                lcd_printf_d("%d ", (int) filtered_valX);
-                lcd_locate(5, 5);
-                lcd_printf_d("%d ", (int) pid);
+                set_motor_angle(CHAN_X, (int)pid);
                 isX = 0;
+                lcd_locate(5, 4);
+                lcd_printf("%d ", (int) filtered_valX);
+                
+                lcd_locate(5, 5);
+                lcd_printf("%d ", (int) pid);
+//                
+//                lcd_locate(5, 5);
+//                lcd_printf_d("%d ", (int) pid);
+                motor_switch(CHAN_Y);
                 touch_select_dim(Y);
                 __delay_ms(10);
-                //motor_switch(CHAN_Y);
+                
                 
             } else {
+                val = touch_read();
                 filtered_valY = online_filter(val, &inputsY, &outputsY);
                 double pid = pid_controller_y(filtered_valY, KPy, KDy, KIy);
-                //set_motor_angle(CHAN_Y, (int)pid);
+                
                 //pid += SERVOS_MEAN;
-                lcd_locate(16, 4);
-                lcd_printf_d("%d ", (int) filtered_valY);
-                lcd_locate(16, 5);
-                lcd_printf_d("%d ", (int) pid);
+                set_motor_angle(CHAN_Y, (int)pid);
+                
                 isX = 1;
+                
+                lcd_locate(16, 4);
+                lcd_printf("%d ", (int) filtered_valY);
+                
+                
+                lcd_locate(16, 5);
+                lcd_printf("%d ", (int) pid);
+//                
+//                lcd_locate(16, 5);
+//                lcd_printf_d("%d ", (int) pid);
+                
+                motor_switch(CHAN_X);
                 touch_select_dim(X);
                 __delay_ms(10);
-                //motor_switch(CHAN_X);
+                
+                
             }
                 
                
@@ -342,65 +387,9 @@ int main(){
     }
     
     
-    // WITH MEDIAN
-    int counterX = 0;
-    int counterY = 0;
-    while(1) {
-        if (filter) {
-            
-            if (isX) {
-                touch_select_dim(X);
-                __delay_ms(10);
-                if (counterX < 5) {
-                    val = touch_read();
-                    samplesX[counterX] = val;
-                    counterX++;
-                } else {
-                    qsort(samplesX, 5, sizeof(samplesX[0]), compare);
-                    motor_init(CHAN_X);
-                    filtered_valX = online_filter(samplesX[0], &inputsX, &outputsX);
-                    //lcd_locate(0, 4);
-                    //lcd_printf_d("x: %d, %d ", samplesX[0], filtered_valX);
-
-                    double pid = pid_controller_x(filtered_valX, KPx, KDx, KIx);
-                    pid += SERVOS_MEAN;
-
-                    set_motor_angle(CHAN_X, (int)pid);
-                    counterX = 0;
-                    isX = 0;
-                }
-                
-                
-                
-            } else {
-                touch_select_dim(Y);
-                __delay_ms(10);
-                if (counterY < 5) {
-                    val = touch_read();
-                    samplesY[counterY] = val;
-                    counterY++;
-                } else {
-                    qsort(samplesY, 5, sizeof(samplesY[0]), compare);
-
-                    motor_init(CHAN_Y);
-                    filtered_valY = online_filter(samplesY[0], &inputsY, &outputsY);
-                    //lcd_locate(0, 5);
-                    //lcd_printf_d("y: %d, %d ", samplesY[0], filtered_valY);
-
-                    double pid = pid_controller_y(filtered_valY, KPy, KDy, KIy);
-                    pid += SERVOS_MEAN;
-                    set_motor_angle(CHAN_Y, (int)pid);
-                    counterY = 0;
-                    isX = 1;
-                }
-                
-                
-            }
-            filter = 0;
-            
-        }
     
-    }
+    
+    
     
     
 }

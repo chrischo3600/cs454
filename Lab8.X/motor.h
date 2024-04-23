@@ -11,4 +11,4 @@ void motor_init();
 
 void motor_switch(uint8_t chan);
 
-void motor_set_duty(uint8_t chan, uint16_t duty us);
+void motor_set_duty(uint8_t chan, uint16_t duty_us);

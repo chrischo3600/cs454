@@ -1,13 +1,9 @@
-/****************************************************/
-/*                                                  */
-/*   CS-454/654 Embedded Systems Development        */
-/*   Instructor: Renato Mancuso <rmancuso@bu.edu>   */
-/*   Boston University                              */
-/*                                                  */
-/*   Description: simple HelloWorld application     */
-/*                for Amazing Ball platform         */
-/*                                                  */
-/****************************************************/
+/*
+ * File:   main.c
+ * Author: team-7a
+ *
+ * Created on April 17, 2024, 3:06 PM
+ */
 
 #include <p33Fxxxx.h>
 //do not change the order of the following 3 definitions
@@ -16,7 +12,6 @@
 #include <libpic30.h>
 #include <uart.h>
 #include <xc.h>
-
 #include "types.h"
 #include "led.h"
 #include "lcd.h"
@@ -26,7 +21,36 @@
 #define CHAN_Y 7
 #define SERVOS_LO 900
 #define SERVOS_HI 2100
+#define SERVOS_MEAN 1500
+#define NUM_SAMPLES 5
+#define TOUCH_MID_X 3200.0
+#define TOUCH_MID_Y 2600.0
+#define BUTTER_ORD 3
+#define X 0
+#define Y 1
 
+
+#define KPx 0.001
+#define KDx 0.001
+#define KIx 0.000
+
+#define KPy 0.002
+#define KDy 0.0
+#define KIy 0.000
+
+
+double b[4] = {0.01809893, 0.0542968,  0.0542968,  0.01809893};
+double a[4] = { 1.       ,  -1.76004188,  1.18289326, -0.27805992};
+
+int val;
+int filter; 
+double lastErrorX = 0; 
+double sumErrorX = 0;
+
+int isX = 1;
+
+double lastErrorY = 0; 
+double sumErrorY = 0;
 
 
 /* Initial configuration by EE */
@@ -43,9 +67,7 @@ _FWDT(FWDTEN_OFF);
 _FGS(GCP_OFF);  
 
 void set_motor_angle(uint8_t channel, uint16_t us_value) {
-    motor_init(channel);
     motor_set_duty(channel, us_value);
-    __delay_ms(2000);
 }
 
 int compare( const void* a, const void* b)
@@ -59,65 +81,199 @@ int compare( const void* a, const void* b)
 }
 
 
+
+
+void __attribute__((__interrupt__)) _T3Interrupt(void) {
+    TMR3=0;
+    filter = 1;
+    CLEARBIT(IFS0bits.T3IF);
+}
+
+int online_filter(double sampled_value, int * inputs, int * outputs) {
+    
+    int diff = sampled_value - inputs[0];
+    
+    if(diff > 1000) {
+        sampled_value = inputs[0];
+    }
+    
+    double retval;
+	int i;
+
+	// Perform sample shift
+	for (i = BUTTER_ORD; i > 0; --i) {
+		inputs[i] = inputs[i-1];
+		outputs[i] = outputs[i-1];
+	}
+	inputs[0] = sampled_value;
+
+	// Compute filtered value
+	retval = 0;
+	for (i = 0; i < BUTTER_ORD+1; ++i) {
+		retval += inputs[i] * b[i];
+		if (i > 0)
+			retval -= outputs[i] * a[i];
+	}
+    
+	outputs[0] = retval;
+   
+
+	return retval;
+    
+}
+
+double pid_controller_x(int x, double kp, double kd, double ki) {
+    double errorX = x - TOUCH_MID_X;
+    sumErrorX += errorX;
+    double errChange = errorX - lastErrorX;
+    lastErrorX = errorX;
+    //lcd_locate(0, 2);
+    //lcd_printf_d("error: %f", errorX);
+    
+    // error
+    double P = kp * errorX; 
+    //lcd_locate(0, 3);
+    //lcd_printf_d("P: %f", P);
+    // rate of sampling in seconds
+    double dt = 50.0/1000.0;
+    
+    // derivative of error 
+    double D = kd * (errChange/dt);
+    
+    // integral of errors
+    double I = ki * sumErrorX;
+    
+    return - P - D - I;
+}
+
+double pid_controller_y(int y, double kp, double kd, double ki) {
+    double errorY = y - TOUCH_MID_Y;
+    sumErrorY += errorY;
+    double errChange = errorY - lastErrorY;
+    lastErrorY = errorY;
+    
+    // error
+    double P = kp * errorY; 
+    // rate of sampling in seconds
+    double dt = 50.0/1000.0;
+    
+    // derivative of error 
+    double D = kd * (errChange/dt);
+    
+    // integral of errors
+    double I = ki * sumErrorY;
+    
+    return - P - D - I;
+}
+
+
 int main(){
     __C30_UART=1;	
 	lcd_initialize();
     led_initialize();
 	lcd_clear();
-	lcd_locate(0,0);
-	lcd_printf_d("-- Lab 06 --");
-    
-    uint16_t x_samples[5];
-    uint16_t y_samples[5];
-    
-    uint16_t corner_x[4] = {SERVOS_LO, SERVOS_HI, SERVOS_HI, SERVOS_LO};
-    uint16_t corner_y[4] = {SERVOS_LO, SERVOS_LO, SERVOS_HI, SERVOS_HI};
-    int j;
     int i;
+    motor_init();
+  
+    int inputsX[BUTTER_ORD+1] = {310, 310, 310, 310};
+    int outputsX[BUTTER_ORD+1] = {310, 310, 310, 310};
     
+    int inputsY[BUTTER_ORD+1] = {350, 350, 350, 350};
+    int outputsY[BUTTER_ORD+1] = {350, 350, 350, 350};
+   
+    touch_init();
     
-    
-    while (1) {
-        for (j = 0; j < 4; j++) {
-            
-            uint16_t check[5] = {2, 3, 4, 5, 1};
-            // move
-            set_motor_angle(CHAN_X, corner_x[j]);
-            set_motor_angle(CHAN_Y, corner_y[j]);
-           
-            
-            // sample x
-            touch_init('x');
-            touch_select_dim('x');
-            for (i = 0; i < 5; i++) {
-                x_samples[i] = touch_read();
-            
-            }
-            
-            // sample y
-            __delay_ms(10);
-            touch_init('y');
-            touch_select_dim('y');
 
-            for (i = 0; i < 5; i++) {
-                y_samples[i] = touch_read();
+    
+    //setup Timer 2
+    __builtin_write_OSCCONL(OSCCONL | 2);
+    CLEARBIT(T3CONbits.TON); // Disable Timer
+    CLEARBIT(T3CONbits.TCS); // Select internal instruction cycle clock
+    CLEARBIT(T3CONbits.TGATE); // Disable Gated Timer mode
+    TMR3 = 0x00; // Clear timer register
+    T3CONbits.TCKPS = 0b11; // Select 1:256 Prescaler
+    PR3 = 1250; // 50000/(1000/50 ms)
+    IPC2bits.T3IP = 0x01; // Set Timer1 Interrupt Priority Level
+    CLEARBIT(IFS0bits.T3IF);
+    SETBIT(IEC0bits.T3IE); // Enable Timer1 interrupt
+    SETBIT(T3CONbits.TON); // Start Timer
+    
+    
+    motor_switch(CHAN_Y);
+    set_motor_angle(CHAN_Y, SERVOS_HI);
+    __delay_ms(2000);
+    motor_switch(CHAN_X);
+    set_motor_angle(CHAN_X, SERVOS_HI);
+    __delay_ms(2000);
+    
+    while(1);
+    
+    int filtered_valX;
+    int filtered_valY;
+    
+    while(1) {
+        double pid;
+
+        if (filter) {
+            if (isX) {
+                motor_switch(CHAN_X);
+                filtered_valX = online_filter(val, &inputsX, &outputsX);
+
+                pid = pid_controller_x(filtered_valX, KPx, KDx, KIx);
+                pid += SERVOS_MEAN;
+                set_motor_angle(CHAN_X, (int)pid);
+                isX = 0;
+            } else {
+                motor_switch(CHAN_Y);
+                filtered_valY = online_filter(val, &inputsY, &outputsY);
+
+                pid = pid_controller_y(filtered_valY, KPy, KDy, KIy);
+                pid += SERVOS_MEAN;
+                set_motor_angle(CHAN_Y, (int)pid);
+                isX = 1;
             }
             
-            // find median
-            qsort(x_samples, 5, sizeof(x_samples[0]), compare);
-            qsort(y_samples, 5, sizeof(y_samples[0]), compare);
-            qsort(check, 5, sizeof(check[0]), compare);
-               
-            // prints
-            lcd_locate(0, j+1);
-            lcd_printf_d("C%d: X= %d, Y= %d ", j+1, x_samples[2], y_samples[2]);
-            lcd_locate(0, 6);
-            lcd_printf_d("%d, %d, %d, %d, %d", check[0], check[1], check[2], check[3], check[4]);
+            filter = 0;
+            
         }
-        
+
+    
+    }
+
+    
+
+    while(1) {
+        int filtered_valX;
+        int filtered_valY;
+        double pid;
+
+        if (filter) {
+            if (isX) {
+                motor_switch(CHAN_X);
+                filtered_valX = online_filter(val, &inputsX, &outputsX);
+
+                pid = pid_controller_x(filtered_valX, KPx, KDx, KIx);
+                pid += SERVOS_MEAN;
+                set_motor_angle(CHAN_X, (int)pid);
+                isX = 0;
+            } else {
+                motor_switch(CHAN_Y);
+                filtered_valY = online_filter(val, &inputsY, &outputsY);
+
+                pid = pid_controller_y(filtered_valY, KPy, KDy, KIy);
+                pid += SERVOS_MEAN;
+                set_motor_angle(CHAN_Y, (int)pid);
+                isX = 1;
+            }
+            
+            filter = 0;
+            
+        }
+
+    
     }
     
-    return 0;
+    
 }
 
 

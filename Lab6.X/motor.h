@@ -7,6 +7,8 @@
 /*                                                  */
 /****************************************************/
 
-void motor_init(uint8 t chan);
+void motor_init();
 
-void motor_set_duty(uint8 t chan, uint16 t duty us);
+void motor_switch(uint8_t chan);
+
+void motor_set_duty(uint8_t chan, uint16_t duty_us);
