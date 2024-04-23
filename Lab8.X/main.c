@@ -23,7 +23,7 @@
 #define SERVOS_HI 2100
 #define SERVOS_MEAN 1500
 #define NUM_SAMPLES 5
-#define TOUCH_MID_X 1500.0
+#define TOUCH_MID_X 1550.0
 #define TOUCH_MID_Y 1450.0
 #define BUTTER_ORD 3
 #define X 0
@@ -32,13 +32,13 @@
 //#define KD 0.1
 //#define KI 0
 
-#define KPx 0.1
-#define KDx 0.02
+#define KPx 0.03
+#define KDx 0.07
 #define KIx 0.001
 
-#define KPy 0.1
-#define KDy 0.02
-#define KIy 0.001
+#define KPy 0.02
+#define KDy 0.06
+#define KIy 0.0005
 
 
 // butterworth ord 3
@@ -225,6 +225,7 @@ int main(){
                 val = touch_read();
                 motor_init(CHAN_X);
                 filtered_valX = online_filter(val, &inputsX, &outputsX);
+                //filtered_valX = val;
                 //lcd_locate(0, 0);
                 //lcd_printf_d("x_val: %d    ", x_val);
 
@@ -239,6 +240,7 @@ int main(){
                 val = touch_read();
                 motor_init(CHAN_Y);
                 filtered_valY = online_filter(val, &inputsY, &outputsY);
+                //filtered_valY = val;
 
                 double pid = pid_controller_y(filtered_valY, KPy, KDy, KIy);
                 pid += SERVOS_MEAN;
