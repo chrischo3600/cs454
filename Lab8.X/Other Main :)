@@ -276,3 +276,14 @@ double pid;
     
 }
 
+
+
+
+
+lcd_locate(0, 0);
+lcd_printf_d("---- Lab 8 ----");
+
+
+
+
+

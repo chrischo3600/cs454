@@ -3,9 +3,8 @@ from scipy import signal
 
 
 # Define the filter parameters
-Wn = (5)/(20/2)  # in hz filter
-fs = 20  # Sample rate in hz
+Wn = (2)/(20/2)  # in hz filter
 N = 3
-b, a = signal.butter(N, Wn, btype='lowpass', fs=fs)
+b, a = signal.butter(N, Wn, btype='lowpass', analog=False)
 
 print(b, a)

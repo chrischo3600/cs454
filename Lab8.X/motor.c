@@ -10,22 +10,28 @@
 #include "xc.h"
 #include "types.h"
 
-void motor_init(uint8_t chan) {
+void motor_init() {
+    // disable timer 2
+    CLEARBIT(T2CONbits.TON);
+
+    // setup timer 2 for no interrupts, 20 ms period 
+    CLEARBIT(T2CONbits.TCS);
+    CLEARBIT(T2CONbits.TGATE);
+    TMR2 = 0x00;
+    T2CONbits.TCKPS= 0b10;  // 1:64
+    CLEARBIT(IEC0bits.T2IE);
+    CLEARBIT(IFS0bits.T2IF);
+    PR2 = 4000;
+
+}
+
+void motor_switch(uint8_t chan) {
     
     // setup OC 8 for x-axis motor
     if (chan == 8) {
-        // disable timer 2
+        
         CLEARBIT(T2CONbits.TON);
-
-        // setup timer 2 for no interrupts, 20 ms period 
-        CLEARBIT(T2CONbits.TCS);
-        CLEARBIT(T2CONbits.TGATE);
         TMR2 = 0x00;
-        T2CONbits.TCKPS= 0b10;  // 1:64
-        CLEARBIT(IEC0bits.T2IE);
-        CLEARBIT(IFS0bits.T2IF);
-        PR2 = 4000;
-
         // configure OC 8 (x-axis)
         CLEARBIT(TRISDbits.TRISD7); // set OC8 = RD7 as output
         OC8CONbits.OCM = 0b110;     // set PWM, no fault mode 
@@ -36,18 +42,9 @@ void motor_init(uint8_t chan) {
     } else if (chan == 7) {
         // disable timer 2
         CLEARBIT(T2CONbits.TON);
-
-        // setup timer 2 for no interrupts, 20 ms period // lab manual set it as 40 ms with 8000
-        CLEARBIT(T2CONbits.TCS);
-        CLEARBIT(T2CONbits.TGATE);
         TMR2 = 0x00;
-        T2CONbits.TCKPS= 0b10;
-        CLEARBIT(IEC0bits.T2IE);
-        CLEARBIT(IFS0bits.T2IF);
-        PR2 = 4000;
-
         // configure OC 7 (y-axis)
-        CLEARBIT(TRISDbits.TRISD7); // set OC8 = RD7 as output !! not yet
+        CLEARBIT(TRISDbits.TRISD7); // set OC7 = RD7 as output !! not yet
         OC7CONbits.OCM = 0b110;     // set PWM, no fault mode 
 
         // enable timer2
